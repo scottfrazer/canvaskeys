@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <canvas id="draw" style="border: 1px solid #ccc"></canvas>
+    <script>
+      // Settings
+      var canvas_width = 960,
+        canvas_height = 600,
+        white_key_width = 30,
+        white_key_height = 120,
+        black_key_width = 20,
+        black_key_height = 66,
+        midi_start = 41, // F2
+        key_border = 1,
+        canvas,
+        ctx,
+        ws,
+        keys = {}//{48:true,51:true,55:true,60:true}
+
+      function draw() {
+        ctx.beginPath();
+        ctx.lineWidth=1;
+        ctx.strokeStyle="black";
+
+        var has_sharps = [0,2,5,7,9]
+        for (i = 0, note = midi_start; i * white_key_width < canvas_width; i++) {
+          ctx.fillStyle="black"
+          x = i*white_key_width
+          ctx.fillRect(x,0,white_key_width,white_key_height);
+
+          ctx.fillStyle="white"
+          if (keys[note] === true) {
+            ctx.fillStyle="red"
+          }
+          ctx.fillRect(x + key_border,0,white_key_width-(key_border*2),white_key_height-key_border);
+          if (has_sharps.includes(note%12)) {
+            note += 2;
+          } else {
+            note += 1;
+          }
+        }
+        ctx.stroke();
+
+        for (i = 0, note = midi_start; i * white_key_width < canvas_width; i++) {
+          x = i*white_key_width
+          var black_key = has_sharps.includes(note % 12);
+          note++;
+
+          if (black_key) {
+            ctx.fillStyle="black"
+            x = (i*white_key_width) + white_key_width - (black_key_width/2)
+            ctx.fillRect(x,0,black_key_width,black_key_height);
+
+          if (keys[note] === true) {
+              ctx.fillStyle="red"
+            }
+            ctx.fillRect(x+key_border,0,white_key_width-10-(key_border*2),black_key_height-key_border);
+            note++;
+          }
+        }
+        ctx.stroke();
+      }
+
+      window.onload = function() {
+        canvas = document.getElementById("draw");
+        ctx = canvas.getContext("2d");
+        canvas.width = canvas_width;
+        canvas.height = canvas_height;
+
+        setInterval(function(){ draw(); }, 50)
+
+        ws = new WebSocket("{{.}}");
+        ws.onopen = function(evt) {
+          console.log("OPEN");
+        }
+        ws.onclose = function(evt) {
+          console.log("CLOSE");
+          ws = null;
+        }
+        ws.onmessage = function(evt) {
+          var parsed = JSON.parse(evt.data)
+          keys[parsed.Data1] = (parsed.Status == 144) ? true : false;
+        }
+        ws.onerror = function(evt) {
+          console.log("ERROR: " + evt.data);
+        }
+      }
+    </script>
+  </body>
+</html>
+
