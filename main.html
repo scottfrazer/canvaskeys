@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+<style>
+body {
+  margin:0;
+    padding:0;
+}
+</style>
     <meta charset="UTF-8">
     <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
   </head>
   <body>
-    <canvas id="draw" style="border: 1px solid #ccc"></canvas>
+    <canvas id="draw"></canvas>
     <script>
       // Settings
       var canvas_width = 960,
@@ -15,24 +21,59 @@
         black_key_width = 20,
         black_key_height = 66,
         midi_start = 41, // F2
+        middle_c = 60,
         key_border = 1,
         canvas,
         ctx,
         ws,
-        keys = {}//{48:true,51:true,55:true,60:true}
+        keys = {}, // MIDI code -> boolean (true means key is down)
+        has_sharps = [0,2,5,7,9], // which MIDI code (mod 12) has a sharped version
+        has_flats = [11,9,7,4,2]
 
       function draw() {
         ctx.beginPath();
         ctx.lineWidth=1;
         ctx.strokeStyle="black";
+        canvas.width = $(window).width();
+        canvas.height = 500;
 
-        var has_sharps = [0,2,5,7,9]
-        for (i = 0, note = midi_start; i * white_key_width < canvas_width; i++) {
+        var white_keys_in_window = 0;
+        for (i = 0, note = midi_start; i * white_key_width < canvas.width; i++) {
+          if (note > 108) {
+            break;
+          }
+          white_keys_in_window++;
+          if (has_sharps.includes(note%12)) {
+            note += 2;
+          } else {
+            note += 1;
+          }
+        }
+
+        if (white_keys_in_window * white_key_width < canvas.width) {
+          var extra_keys = (canvas.width - (white_keys_in_window * white_key_width)) / white_key_width;
+          for (i = 0; i < extra_keys; i++) {
+            if (has_flats.includes(midi_start)) {
+              midi_start -= 2;
+            } else {
+              midi_start -= 1;
+            }
+          }
+          midi_start = midi_start < 21 ? 21 : midi_start;
+        }
+
+        for (i = 0, note = midi_start; i * white_key_width < canvas.width; i++) {
+          if (note > 108) {
+            break;
+          }
           ctx.fillStyle="black"
           x = i*white_key_width
           ctx.fillRect(x,0,white_key_width,white_key_height);
 
           ctx.fillStyle="white"
+          if (note == middle_c) {
+            ctx.fillStyle="#ddd"
+          }
           if (keys[note] === true) {
             ctx.fillStyle="red"
           }
@@ -45,7 +86,10 @@
         }
         ctx.stroke();
 
-        for (i = 0, note = midi_start; i * white_key_width < canvas_width; i++) {
+        for (i = 0, note = midi_start; i * white_key_width < canvas.width; i++) {
+          if (note == 108) {
+            break;
+          }
           x = i*white_key_width
           var black_key = has_sharps.includes(note % 12);
           note++;
@@ -68,8 +112,6 @@
       window.onload = function() {
         canvas = document.getElementById("draw");
         ctx = canvas.getContext("2d");
-        canvas.width = canvas_width;
-        canvas.height = canvas_height;
 
         setInterval(function(){ draw(); }, 50)
 
